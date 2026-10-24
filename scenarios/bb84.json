@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "bb84-baseline",
+  "description": "Idealized BB84 polarization link with finite detector efficiency and a small misalignment.",
+  "model": {
+    "transmission": 1.0,
+    "detectorEfficiency": 0.9,
+    "darkCountProbability": 0.001,
+    "misalignmentRad": 0.02
+  },
+  "pulses": 10000,
+  "seed": 42
+}

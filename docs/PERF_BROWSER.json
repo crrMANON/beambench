@@ -1,0 +1,179 @@
+{
+  "generatedAt": "2026-10-17T11:29:39.569Z",
+  "status": "BLOCKED_ENV",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+    "vendor": "Google Inc. (Google)",
+    "devicePixelRatio": 2,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "node": "v24.18.0",
+    "playwright": "1.64.1"
+  },
+  "load": {
+    "requested": 30,
+    "before": 3,
+    "after": 30,
+    "added": [
+      {
+        "ok": true,
+        "uuid": "60942356-bcc7-4f38-b1a2-81651db33112"
+      },
+      {
+        "ok": true,
+        "uuid": "e25d57dd-0848-49c4-b6ae-6437f3f9801c"
+      },
+      {
+        "ok": true,
+        "uuid": "3d25ebc6-40d5-4eee-bc8c-e7662d1817cf"
+      },
+      {
+        "ok": true,
+        "uuid": "dd2733db-9fad-4c8b-8cfe-1af21f6a3738"
+      },
+      {
+        "ok": true,
+        "uuid": "a89cd84d-1e57-4731-8861-6252f3dc66f3"
+      },
+      {
+        "ok": true,
+        "uuid": "29c60304-0f8e-43e4-b859-71c7b6cd6954"
+      },
+      {
+        "ok": true,
+        "uuid": "78d20816-4c67-4598-b413-81fe9d700d91"
+      },
+      {
+        "ok": true,
+        "uuid": "3bd815f2-1165-4182-8d02-9bf502709d8c"
+      },
+      {
+        "ok": true,
+        "uuid": "6c7f1d38-9982-4669-91e2-566a8138c840"
+      },
+      {
+        "ok": true,
+        "uuid": "b05adedb-69fc-46b1-b440-d8c44d2a2fd9"
+      },
+      {
+        "ok": true,
+        "uuid": "d5c13cab-1305-47eb-a1fc-1d0bb0f962a3"
+      },
+      {
+        "ok": true,
+        "uuid": "5443ba31-3eab-4007-a6c3-5185992ad7cd"
+      },
+      {
+        "ok": true,
+        "uuid": "2872b407-d65b-413f-9452-9f7c843aefe9"
+      },
+      {
+        "ok": true,
+        "uuid": "9d89353a-0ac1-4ea5-a690-a19130c6c041"
+      },
+      {
+        "ok": true,
+        "uuid": "9981f9f7-30fe-49cd-88d6-f6fe9827b41c"
+      },
+      {
+        "ok": true,
+        "uuid": "686034b8-7a27-4538-a3af-889f1ddca476"
+      },
+      {
+        "ok": true,
+        "uuid": "027a4257-d0b2-4849-93dc-08611c125ea1"
+      },
+      {
+        "ok": true,
+        "uuid": "c31238bc-c226-4298-a069-b63c8ef40a89"
+      },
+      {
+        "ok": true,
+        "uuid": "88a4067d-91f8-4d94-8543-9a5348149119"
+      },
+      {
+        "ok": true,
+        "uuid": "b56dfd37-7aed-4693-8acf-1c7a8db24467"
+      },
+      {
+        "ok": true,
+        "uuid": "fe58b612-c3f7-4d9b-8bb4-957204f4dea9"
+      },
+      {
+        "ok": true,
+        "uuid": "572e1226-e359-4cbd-a4b8-d6b252881433"
+      },
+      {
+        "ok": true,
+        "uuid": "67caaed3-2d86-4c82-bed5-984ec66664a6"
+      },
+      {
+        "ok": true,
+        "uuid": "cb86edef-fd17-4593-bf14-6e2de71eef2e"
+      },
+      {
+        "ok": true,
+        "uuid": "9f2b2741-7b34-416c-882d-202f602a92c3"
+      },
+      {
+        "ok": true,
+        "uuid": "cab29533-1e04-4510-b76c-18d3d04a9e84"
+      },
+      {
+        "ok": true,
+        "uuid": "c1a7fcd1-9ea7-4fc3-9a95-605c3de01fe5"
+      }
+    ],
+    "sceneCount": 30
+  },
+  "fps": {
+    "windowSeconds": 5,
+    "frames": 11,
+    "elapsedMs": 5204.100000023842,
+    "medianFps": 1.9357336430506944,
+    "meanFps": 2.113718030005112,
+    "p95FrameMs": 550
+  },
+  "latency": {
+    "requested": 20,
+    "samples": 20,
+    "errors": 0,
+    "firstError": null,
+    "p50Ms": 2261.1999999284744,
+    "p95Ms": 2307.8000000715256,
+    "maxMs": 2323.6999999284744
+  },
+  "memory": {
+    "reloads": 8,
+    "samples": [
+      {
+        "reload": 5,
+        "heapBytes": 26000000,
+        "geometries": 59,
+        "textures": 2,
+        "programs": 12
+      }
+    ],
+    "heapBaselineBytes": 26000000,
+    "heapFinalBytes": 26000000,
+    "heapDeltaBytes": 0,
+    "geometrySamples": [
+      59
+    ],
+    "textureSamples": [
+      2
+    ],
+    "monotonicGeometry": false,
+    "monotonicTextures": false
+  },
+  "criteria": {
+    "fpsPass": false,
+    "latencyPass": false,
+    "memoryPass": true
+  },
+  "pageErrors": [],
+  "note": "Software WebGL renderer detected; AC09 thresholds are reported as BLOCKED_ENV, not as a pass."
+}

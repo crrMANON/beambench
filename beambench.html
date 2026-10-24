@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<!--
+  BeamBench Copyright (C) 2025 VisuPhy
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BeamBench - 3D Optical Laboratory</title>
+<style>
+  html, body { 
+    margin: 0; 
+    height: 100%; 
+    background: #0d1117; 
+    color: #e6edf3; 
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+  }
+  #app { 
+    position: fixed; 
+    inset: 0; 
+  }
+  .hud {
+    position: fixed; 
+    left: 12px; 
+    bottom: 12px; 
+    background: rgba(0,0,0,.5);
+    color: #c9d1d9; 
+    padding: 8px 10px; 
+    border: 1px solid #30363d; 
+    border-radius: 8px; 
+    font-size: 12px; 
+    user-select: none;
+  }
+  .hud code { 
+    color: #7ee787; 
+  }
+  .palette {
+    position: fixed; 
+    top: 12px; 
+    left: 12px; 
+    z-index: 20;
+    width: 220px; 
+    background: rgba(0,0,0,.55); 
+    border: 1px solid #30363d; 
+    border-radius: 10px;
+    padding: 8px; 
+    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  }
+  .palette h4 {
+    margin: 4px 6px 8px; 
+    font-size: 12px; 
+    color: #c9d1d9; 
+    font-weight: 700; 
+    letter-spacing: .02em;
+  }
+  .pal-list { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 6px; 
+  }
+  .palette-action {
+    width: 100%; margin: 0 0 8px; padding: 7px 8px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    color: #0d1117; background: #7ee787; border: 1px solid #7ee787;
+    border-radius: 8px;
+  }
+  .palette-action:hover { background: #a7f3c0; }
+  .pal-item {
+    display: block; 
+    padding: 6px 8px; 
+    font-size: 12px; 
+    text-align: center;
+    background: #161b22; 
+    color: #e6edf3; 
+    border: 1px solid #30363d; 
+    border-radius: 8px; 
+    cursor: grab; 
+    user-select: none;
+  }
+  .pal-item:active { 
+    cursor: grabbing; 
+  }
+  .drag-ghost {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #e6edf3;
+    background: rgba(22, 27, 34, .9);
+    border: 1px solid #7ee787;
+    border-radius: 8px;
+    opacity: .85;
+  }
+  .views {
+    position: fixed;
+    left: 50%;
+    top: 12px;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    gap: 6px;
+    background: rgba(0, 0, 0, .55);
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 6px;
+  }
+  .views button {
+    font-size: 12px;
+    color: #e6edf3;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  .views button:hover { border-color: #7ee787; }
+  .views button.secondary { margin-left: 6px; border-color: #7ee787; color: #7ee787; }
+  body.training-mode .palette,
+  body.training-mode .hud,
+  body.training-mode .views,
+  body.training-mode #gizmo-controls,
+  body.training-mode .lil-gui { display: none !important; }
+  body.training-mode { background: #2f3339; }
+  .training-exit {
+    display: none;
+    position: fixed; top: 12px; right: 12px; z-index: 6000;
+    padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    color: #0d1117; background: #7ee787; border: 1px solid #7ee787;
+    font-size: 13px; font-weight: 700;
+  }
+  .training-exit:hover { background: #a7f3c0; }
+  body.training-mode .training-exit { display: inline-flex; }
+  .training-toast {
+    position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
+    z-index: 6000; padding: 8px 14px; border-radius: 8px;
+    color: #e6edf3; background: rgba(0,0,0,.72);
+    border: 1px solid #30363d; font-size: 13px;
+    opacity: 0; pointer-events: none; transition: opacity .25s ease;
+  }
+  .training-toast.show { opacity: 1; }
+  #boot-status {
+    position: fixed; inset: 0; z-index: 9000;
+    display: flex; align-items: center; justify-content: center;
+    background: #11151a; color: #e6edf3;
+  }
+  #boot-status .boot-card {
+    max-width: 560px; padding: 24px 28px; text-align: center;
+    border: 1px solid #30363d; border-radius: 12px; background: #171c22;
+  }
+  #boot-status h2 { margin: 0 0 10px; font-size: 18px; color: #7ee787; }
+  #boot-status p { margin: 6px 0; line-height: 1.6; font-size: 13px; color: #c9d1d9; }
+  #boot-status .boot-hint { color: #8b949e; }
+  #boot-status.boot-error .boot-card { border-color: #f85149; }
+  #boot-status.boot-error h2 { color: #ff7b72; }
+  .file-warning {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    text-align: center;
+    background: #0d1117;
+  }
+  .file-warning[hidden] { display: none; }
+  .file-warning h2 { margin: 0; font-size: 20px; color: #7ee787; }
+  .file-warning p { max-width: 640px; margin: 0; line-height: 1.6; color: #c9d1d9; }
+  .file-warning code {
+    padding: 2px 6px;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    background: #161b22;
+    color: #e6edf3;
+  }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="palette" id="palette">
+    <h4>拖拽器件到光具台</h4>
+    <button type="button" id="auto-align" class="palette-action">自动准直（排到同一直线）</button>
+    <div class="pal-list">
+      <button class="pal-item" data-type="source" draggable="true">高斯光束</button>
+      <button class="pal-item" data-type="raysSource" draggable="true">光线束</button>
+      <button class="pal-item" data-type="lens" draggable="true">薄透镜</button>
+      <button class="pal-item" data-type="thickLens" draggable="true">厚透镜</button>
+      <button class="pal-item" data-type="mirror" draggable="true">反射镜</button>
+      <button class="pal-item" data-type="polarizer" draggable="true">偏振片</button>
+      <button class="pal-item" data-type="waveplate" draggable="true">波片</button>
+      <button class="pal-item" data-type="faraday" draggable="true">法拉第旋光器</button>
+      <button class="pal-item" data-type="pbs" draggable="true">偏振分束器 / 分束器</button>
+      <button class="pal-item" data-type="beamblock" draggable="true">光束阻挡器</button>
+    </div>
+  </div>
+  <div id="boot-status" role="status">
+    <div class="boot-card">
+      <h2>BeamBench</h2>
+      <p id="boot-message">正在加载 3D 场景…</p>
+      <p class="boot-hint" id="boot-hint">
+        如果长时间停留在此页，请使用 Chrome / Edge 打开，并确认硬件加速与 WebGL 已启用。
+      </p>
+    </div>
+  </div>
+  <div class="hud">
+    <div><b>BeamBench © 2026 VisuPhy</b></div>
+    <div>孔距：25 mm • 台面：1.4 m × 1.0 m</div>
+    <div>构建：<span id="bb-build">dev</span></div>
+    <div>操作：左键旋转 • 右键平移 • 滚轮缩放</div>
+  </div>
+  <button type="button" id="training-exit" class="training-exit">退出训练视图 (H / Esc)</button>
+  <div id="training-toast" class="training-toast">训练视图已开启：按 H 或 Esc 退出</div>
+  <div class="views" id="views" aria-label="相机视角">
+    <button type="button" data-view="perspective">透视</button>
+    <button type="button" data-view="bench">全景</button>
+    <button type="button" data-view="top">俯视</button>
+    <button type="button" data-view="front">前视</button>
+    <button type="button" data-view="side">侧视</button>
+    <button type="button" id="reset-camera" class="secondary">重置相机</button>
+  </div>
+
+  <div class="file-warning" id="file-warning" hidden>
+    <h2>BeamBench 需要通过 HTTP 打开</h2>
+    <p>
+      浏览器禁止从 <code>file://</code> 加载 ES module，所以直接双击这个文件只会看到深色背景。
+      请运行 <code>npm run dev</code> 或 <code>npm run build &amp;&amp; npm run preview</code>，
+      或使用单文件版 <code>dist/beambench-standalone.html</code>
+      （由 <code>npm run build:standalone</code> 生成，可直接双击打开）。
+    </p>
+  </div>
+  <script>
+    (function () {
+      var status = document.getElementById('boot-status');
+      var message = document.getElementById('boot-message');
+      var hint = document.getElementById('boot-hint');
+      function fail(text, detail) {
+        if (!status || !status.isConnected) return;
+        if (status.classList.contains('boot-error')) return;
+        status.classList.add('boot-error');
+        message.textContent = text;
+        if (detail) hint.textContent = detail;
+      }
+      window.__bbBootFail = fail;
+      window.addEventListener('error', function (event) {
+        fail('加载失败：' + (event.message || '未知错误'), '请把这条信息反馈给开发者，或使用 npm run dev 打开。');
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+        fail('运行错误：' + reason, '请把这条信息反馈给开发者，或使用 npm run dev 打开。');
+      });
+      setTimeout(function () {
+        if (!status || !status.isConnected) return;
+        var webgl = 'unknown';
+        try {
+          var canvas = document.createElement('canvas');
+          webgl = (canvas.getContext('webgl2') || canvas.getContext('webgl')) ? 'available' : 'unavailable';
+        } catch (error) {
+          webgl = 'error';
+        }
+        fail('3D 场景未能初始化（WebGL: ' + webgl + '）',
+          '请启用浏览器硬件加速/WebGL，或改用 Chrome / Edge。当前地址：' + location.href);
+      }, 8000);
+    })();
+    if (location.protocol === 'file:') {
+      setTimeout(function () {
+        if (!document.querySelector('canvas')) {
+          document.getElementById('file-warning').hidden = false;
+        }
+      }, 600);
+    }
+  </script>
+
+  <script type="module" src="./src/upstream/main.js"></script>
+</body>
+</html>

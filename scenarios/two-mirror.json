@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "two-mirror",
+  "type": "two-mirror",
+  "description": "Two steering mirrors align the beam position and angle at a target plane.",
+  "geometry": {
+    "d1_m": 0.1,
+    "d2_m": 0.3,
+    "L_m": 0.6,
+    "targetY_m": 0.01,
+    "targetAngleRad": 0
+  },
+  "controls": [
+    { "name": "theta1", "min": -0.05, "max": 0.05, "initial": -0.01 },
+    { "name": "theta2", "min": -0.05, "max": 0.05, "initial": 0.01 }
+  ],
+  "tolerance": 1e-6,
+  "maxIterations": 50
+}

@@ -1,0 +1,137 @@
+{
+  "params": {
+    "beamWidthScale": 1,
+    "showGrid": true,
+    "showLabels": true,
+    "labelFontSize": 1
+  },
+  "sources": [
+    {
+      "props": {
+        "beamMode": "gaussian",
+        "wavelength_nm": 530,
+        "bandwidth_nm": 0,
+        "specSamples": 9,
+        "waist_w0_um": 200,
+        "rayleigh_mm": 237.10133234639946,
+        "forward_cm": 100,
+        "backward_cm": 0,
+        "intensity_rel": 1,
+        "M2": 1,
+        "rays_aperture_radius_mm": 1,
+        "rays_spacing_um": 600,
+        "rays_radius_um": 50,
+        "polPreset": "Linear X",
+        "customPolEx": "1+0i",
+        "customPolEy": "0+0i"
+      },
+      "position": [
+        0,
+        0,
+        -0.3
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "type": "polarizer",
+      "props": {
+        "axisDeg": 0
+      },
+      "position": [
+        0,
+        0,
+        -0.22
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "type": "waveplate",
+      "props": {
+        "type": "HWP",
+        "delta": 3.141592653589793,
+        "axisDeg": 22.5
+      },
+      "position": [
+        0,
+        0,
+        -0.14
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "type": "polarizer",
+      "props": {
+        "axisDeg": 0
+      },
+      "position": [
+        0,
+        0,
+        -0.06
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "type": "multimeter",
+      "props": {},
+      "position": [
+        0,
+        0,
+        0.02
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "ruler": null
+}

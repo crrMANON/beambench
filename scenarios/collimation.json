@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "collimation",
+  "type": "collimation",
+  "description": "A lens transverse offset and tilt collimate the beam onto the target axis.",
+  "geometry": {
+    "L_m": 0.4,
+    "targetY_m": 0,
+    "targetAngleRad": 0
+  },
+  "controls": [
+    { "name": "lensX_m", "min": -0.02, "max": 0.02, "initial": 0.006 },
+    { "name": "lensTiltRad", "min": -0.05, "max": 0.05, "initial": -0.005 }
+  ],
+  "tolerance": 1e-6,
+  "maxIterations": 50
+}

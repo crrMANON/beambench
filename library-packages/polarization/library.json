@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "id": "polarization",
+  "name": "偏振光学",
+  "version": "1.0.0",
+  "presets": [
+    { "id": "polarizer-0", "name": "偏振片 0°", "factory": "polarizer", "params": { "axisDeg": 0 } },
+    { "id": "polarizer-45", "name": "偏振片 45°", "factory": "polarizer", "params": { "axisDeg": 45 } },
+    { "id": "half-wave", "name": "半波片", "factory": "waveplate", "params": { "type": "HWP", "delta": 3.141592653589793, "axisDeg": 22.5 } },
+    { "id": "quarter-wave", "name": "四分之一波片", "factory": "waveplate", "params": { "type": "QWP", "delta": 1.5707963267948966, "axisDeg": 45 } },
+    { "id": "faraday-45", "name": "旋光器 45°", "factory": "faraday", "params": { "phiDeg": 45 } },
+    { "id": "pbs", "name": "偏振分束器", "factory": "beamSplitter", "params": { "R": 0.5, "polarizing": true, "polTransmit": "Vertical" } },
+    { "id": "power-meter", "name": "功率计", "factory": "multimeter", "params": {} }
+  ]
+}

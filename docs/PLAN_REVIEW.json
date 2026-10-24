@@ -1,0 +1,121 @@
+{
+  "review_date": "2026-10-17",
+  "scope": "documentation-only; not product acceptance",
+  "checks": {
+    "unique_sequential_task_ids": "PASS",
+    "required_task_fields": "PASS",
+    "closed_dependencies": "PASS",
+    "acyclic_dependencies": "PASS",
+    "relative_markdown_links": "PASS",
+    "document_length_budgets": "PASS",
+    "acceptance_ids": "PASS"
+  },
+  "task_count": 15,
+  "dependencies": {
+    "BB-00": [],
+    "BB-01": [
+      "BB-00"
+    ],
+    "BB-02": [
+      "BB-01"
+    ],
+    "BB-03": [
+      "BB-02"
+    ],
+    "BB-04": [
+      "BB-03"
+    ],
+    "BB-05": [
+      "BB-03"
+    ],
+    "BB-06": [
+      "BB-04"
+    ],
+    "BB-07": [
+      "BB-05",
+      "BB-06"
+    ],
+    "BB-08": [
+      "BB-05",
+      "BB-06"
+    ],
+    "BB-09": [
+      "BB-03",
+      "BB-07",
+      "BB-08"
+    ],
+    "BB-10": [
+      "BB-04",
+      "BB-05",
+      "BB-07",
+      "BB-08"
+    ],
+    "BB-11": [
+      "BB-08",
+      "BB-09",
+      "BB-10"
+    ],
+    "BB-12": [
+      "BB-05",
+      "BB-07",
+      "BB-08",
+      "BB-09",
+      "BB-10",
+      "BB-11"
+    ],
+    "BB-13": [
+      "BB-12"
+    ],
+    "BB-14": [
+      "BB-13"
+    ]
+  },
+  "acceptance_ids": [
+    "BB-AC01",
+    "BB-AC02",
+    "BB-AC03",
+    "BB-AC04",
+    "BB-AC05",
+    "BB-AC06",
+    "BB-AC07",
+    "BB-AC08",
+    "BB-AC09",
+    "BB-AC10"
+  ],
+  "documents": [
+    {
+      "path": "PLAN.md",
+      "lines": 148,
+      "sha256": "ed9217a766d366d77a3efbfec1088b18cc45b1b675c139f930a262deef7fb874"
+    },
+    {
+      "path": "docs/DECISIONS.md",
+      "lines": 14,
+      "sha256": "126e9f18c8177db127816c6037ce268ea45659773e9b27a7b32ea05e0839b0af"
+    },
+    {
+      "path": "docs/HANDOFF.md",
+      "lines": 14,
+      "sha256": "eb33b401f9392756786e7087d1dc579cb6f11d79f42b2b34a706cca2f8b40885"
+    },
+    {
+      "path": "docs/RESEARCH.md",
+      "lines": 62,
+      "sha256": "58a66539ac893ef2ee1205659dd4e5a570b768dddf335c2c36fbb38465973e32"
+    },
+    {
+      "path": "docs/STATUS.md",
+      "lines": 36,
+      "sha256": "59273cfc697cd81b3665b19dfefb26a419da802898643da808ad0f64984d8983"
+    },
+    {
+      "path": "docs/TASKS.md",
+      "lines": 210,
+      "sha256": "ed902fbc6081e7e31542cdd9056101d9f9895b79ec87d3e91f456bd541f59bc4"
+    }
+  ],
+  "product_tasks_status": "ALL_NOT_STARTED",
+  "product_gates_passed": 0,
+  "git_repository_present": false,
+  "runtime_verification": "See RESEARCH.md for narrowly scoped upstream checks; no product application or Blender runtime was validated."
+}

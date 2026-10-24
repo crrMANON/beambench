@@ -1,0 +1,28 @@
+{
+  "files": {
+    "beambench.html": "83dd7af1eb621f43a7009a2165df545c3974f88f5f3f29f63f8c3dc20f62b5b1",
+    "src/upstream/environment.js": "bc676e61919516a7d4015ab11de3132296594710ef985c9837c01db65bd441d8",
+    "src/upstream/hardware.js": "580b7041c51ee2cf33d78eb4a57dbef7c883b0f0fb241d00104a14c5f56fe0c5",
+    "src/upstream/elements.js": "a343d9f64496f3906fa10c2b8816101c1086a910d3061c0fc444b32074234b53",
+    "src/upstream/sources.js": "b75370a21def4b3165d2bba36aa10507b7e919be83890e949e58701c79dd23cb",
+    "src/upstream/state.js": "87ab1e029e33af0317ff8960c01ee9fe91f32bc516505ec4cd12c36b8ae100f6",
+    "src/upstream/gizmo-ui.js": "ca38baa5039f3a1d15a6087fb6e3e95fb9d876e2475944e4e2000df0680c1d81",
+    "src/upstream/propagation.js": "d55ab3325b743093f727f17459c59c3f498faf206b3550100d7dcd48a4070b72",
+    "src/upstream/polarization.js": "491268679de825da9b87e62b63395d72b68eed0a966bd85f3bffc3b5d100f08e",
+    "src/upstream/ribbon.js": "bb44b30898141cd4900216cffb5cbaacc9598143a794af0547783ed282ef7a82",
+    "src/physics/trace.ts": "6da644c5cefbc4cb8411eb3a772864dec8bb4c9a8a70c1d8ec203e553f78f4e2",
+    "src/domain/scene.ts": "68de59e256673d92e5e3b5b8462171b861608cee387da110152d5d78dfb43b5f"
+  },
+  "sections": [
+    {
+      "start": "/* ========= Scene ========= */",
+      "end": "function spawnAt(",
+      "sha256": "4276a843297ec101e75cb02235dad4b155460fb3a86e58c197d92e6401f29d7f"
+    },
+    {
+      "start": "// --- Desktop Mouse Drag & Drop ---",
+      "end": "function createUpstreamElement(",
+      "sha256": "ad5bfdce4956878d25a27dc77f1cfac71471aed2c744907b8fb1223953eb7588"
+    }
+  ]
+}

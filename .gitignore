@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-basic/
+artifacts/
+release/
+recovery/
+coverage/
+test-results/
+playwright-report/
+.vite/
+*.log
+.DS_Store
+.env.local
+.vscode/
+.idea/

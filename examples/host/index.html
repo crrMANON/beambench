@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BeamBench Host Example</title>
+<style>
+  body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 16px; background: #0d1117; color: #e6edf3; }
+  iframe { width: 100%; height: 520px; border: 1px solid #30363d; border-radius: 8px; }
+  pre { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px; overflow: auto; }
+  button { margin-right: 8px; }
+</style>
+</head>
+<body>
+  <h2>BeamBench host example</h2>
+  <p>
+    Serves the app in an iframe and talks to it through a MessagePort. Serve this
+    directory over HTTP from the same origin as the app build (the origin must be
+    listed explicitly in the embedder configuration).
+  </p>
+  <button id="state">get_state</button>
+  <button id="observe">observe</button>
+  <pre id="log">Waiting for handshake…</pre>
+
+  <iframe id="bench" src="../../beambench.html" title="BeamBench"></iframe>
+
+  <script type="module">
+    import { connect } from './sdk.js';
+
+    const log = document.getElementById('log');
+    const iframe = document.getElementById('bench');
+    const write = (value) => { log.textContent = JSON.stringify(value, null, 2); };
+
+    try {
+      const bb = await connect({ iframe, origin: location.origin });
+      write({ connected: true, revision: bb.revision });
+      document.getElementById('state').onclick = async () => write(await bb.getState());
+      document.getElementById('observe').onclick = async () => write(await bb.observe());
+    } catch (error) {
+      write({ connected: false, error: String(error) });
+    }
+  </script>
+</body>
+</html>

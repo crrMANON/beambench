@@ -1,0 +1,1053 @@
+/*!
+ * BeamBench Copyright (C) 2025 VisuPhy
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+// elements.js — Three.js optics elements, labels, and helpers
+import * as THREE from 'three';
+import { Complex, Rtheta, MWaveplate, MPol } from './optics.js?v=1.0.15';
+import { buildTransverseBasis } from './beam-frame.js?v=1.0.15';
+
+let ELEMENT_ID = 1;
+
+// Shared materials
+const commonSide = THREE.DoubleSide;
+function makeGlassMaterial(color, transmission = 0.9) {
+  return new THREE.MeshPhysicalMaterial({
+    color, metalness: 0, roughness: 0.04, transmission,
+    thickness: 0.0015, ior: 1.5, transparent: true, opacity: 1,
+    side: commonSide, depthWrite: false, envMapIntensity: 1.0,
+  });
+}
+
+const matLens    = makeGlassMaterial(0xd7f1ff, 0.94);
+const matGlass   = makeGlassMaterial(0xd5ffe9, 0.9);
+const matWave    = makeGlassMaterial(0xffe7c4, 0.88);
+const matFaraday = makeGlassMaterial(0xefdcff, 0.88);
+function makeMirrorTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 256, 256);
+  gradient.addColorStop(0, '#ffffff');
+  gradient.addColorStop(0.35, '#c8d1da');
+  gradient.addColorStop(0.7, '#8b96a3');
+  gradient.addColorStop(1, '#d9e2ea');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 256, 256);
+  // Soft studio highlights to read as a polished mirror from any camera angle.
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(78, 58, 46, 18, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(185, 168, 30, 12, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const matMirror  = new THREE.MeshStandardMaterial({
+  map: makeMirrorTexture(),
+  color: 0xffffff, metalness: 0.65, roughness: 0.12,
+  side: commonSide, envMapIntensity: 1.1,
+});
+const matMirrorSide = new THREE.MeshStandardMaterial({
+  color: 0x3b4048, metalness: 0.7, roughness: 0.45,
+  side: commonSide,
+});
+const matThickLensSide = new THREE.MeshStandardMaterial({
+  color: 0x7fa6c4, metalness: 0.05, roughness: 0.25,
+  side: commonSide, transparent: true, opacity: 0.45, depthWrite: false,
+});
+const matBS      = makeGlassMaterial(0xd4e4ff, 0.92);
+const matBlock   = new THREE.MeshStandardMaterial({ color:0x22262c, metalness:0.3, roughness:0.7, side: THREE.DoubleSide });
+const matGrating = makeGlassMaterial(0xe8d6ff, 0.85);
+const matMeter   = new THREE.MeshStandardMaterial({ color:0xfff3a3, metalness:0.15, roughness:0.4, transparent:true, opacity:0.95, side: THREE.DoubleSide });
+
+function makePanel(w=0.0036, h=0.0036, mat=matGlass, shape='box'){
+  const visualThickness = 0.0004; // Visual thickness
+  const collisionThickness = 1e-6; // Near-zero for collision
+  
+  // Create a group to hold both meshes
+  const group = new THREE.Group();
+  
+  // Visual mesh: round optics get a disc, mounts/grating keep their plate.
+  const visualGeometry = shape === 'disc'
+    ? new THREE.CylinderGeometry(Math.min(w, h) * 0.46, Math.min(w, h) * 0.46, 0.0006, 48)
+    : new THREE.BoxGeometry(w, h, visualThickness);
+  const visualMesh = new THREE.Mesh(visualGeometry, mat);
+  if (shape === 'disc') visualMesh.rotation.x = Math.PI / 2;
+  visualMesh.castShadow = false;
+  visualMesh.receiveShadow = false;
+  visualMesh.userData.isVisualOnly = true; // Mark as visual-only
+  group.add(visualMesh);
+  
+  // Collision mesh (thin, invisible, for ray tracing)
+  const collisionGeometry = new THREE.BoxGeometry(w, h, collisionThickness);
+  const collisionMesh = new THREE.Mesh(
+    collisionGeometry,
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  collisionMesh.userData.isCollisionMesh = true;
+  
+  // Return the collision mesh but keep the visual as a child
+  collisionMesh.add(group);
+  return collisionMesh;
+}
+// --- helpers: plano-spherical visual geometry ---
+function _buildSphericalPatchGeometry(worldW, worldH, R, segs = 96) {
+  // worldW/worldH are the *actual* visible size in meters (base size × scale).
+  const sgn = (R >= 0 ? 1 : -1);
+  const Ra  = Math.abs(R);
+
+  if (!Number.isFinite(Ra) || Ra < 1e-9) {
+    // fallback to flat plane if R is not valid
+    return new THREE.PlaneGeometry(worldW, worldH, segs, segs);
+  }
+
+  const gx = segs, gy = segs;
+  const vx = (gx + 1), vy = (gy + 1);
+  const positions = new Float32Array(vx * vy * 3);
+  const normals   = new Float32Array(vx * vy * 3);
+  const uvs       = new Float32Array(vx * vy * 2);
+
+  const halfW = worldW * 0.5, halfH = worldH * 0.5;
+
+  let ip = 0, iu = 0;
+  for (let j = 0; j <= gy; j++) {
+    const ty = j / gy, y = THREE.MathUtils.lerp(-halfH, halfH, ty);
+    for (let k = 0; k <= gx; k++) {
+      const tx = k / gx, x = THREE.MathUtils.lerp(-halfW, halfW, tx);
+      const r2 = x*x + y*y;
+      const inside = r2 <= Ra*Ra + 1e-12;
+
+      // sagitta on the sphere; if outside, place it *on the rim* (projection),
+      // so edge is circular even when the grid is rectangular.
+      let px = x, py = y, pz = 0;
+      if (inside) {
+        pz = sgn * (Ra - Math.sqrt(Math.max(0, Ra*Ra - r2)));
+      } else {
+        // project to rim: scale (x,y) to length R
+        const invLen = 1.0 / Math.max(1e-12, Math.hypot(x, y));
+        px = x * Ra * invLen;
+        py = y * Ra * invLen;
+        pz = sgn * Ra; // rim z at hemisphere boundary
+      }
+
+      positions[ip+0] = px;
+      positions[ip+1] = py;
+      positions[ip+2] = pz;
+
+      // normal from sphere center (0,0,sgn*R) to point
+      let nx = px, ny = py, nz = (pz - sgn*Ra);
+      const inv = 1.0 / Math.max(1e-12, Math.hypot(nx, ny, nz));
+      normals[ip+0] = nx * inv;
+      normals[ip+1] = ny * inv;
+      normals[ip+2] = nz * inv;
+
+      uvs[iu+0] = tx; uvs[iu+1] = ty;
+      ip += 3; iu += 2;
+    }
+  }
+
+  // indices — add a cell's two triangles only if the *cell center* is inside the circle
+  const idx = [];
+  for (let j = 0; j < gy; j++) {
+    for (let k = 0; k < gx; k++) {
+      const a = j * (gx+1) + k;
+      const b = a + 1;
+      const c = a + (gx+1);
+      const d = c + 1;
+
+      // cell center (average of its four corners)
+      const cx = 0.25 * (positions[3*a] + positions[3*b] + positions[3*c] + positions[3*d]);
+      const cy = 0.25 * (positions[3*a+1] + positions[3*b+1] + positions[3*c+1] + positions[3*d+1]);
+      if ((cx*cx + cy*cy) <= Ra*Ra + 1e-9) {
+        idx.push(a, c, b, b, c, d);
+      }
+    }
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('normal',   new THREE.BufferAttribute(normals, 3));
+  geom.setAttribute('uv',       new THREE.BufferAttribute(uvs, 2));
+  geom.setIndex(idx);
+  geom.computeBoundingBox();
+  geom.computeBoundingSphere();
+  return geom;
+}
+
+function _geometryZRange(geom){
+  const pos = geom?.getAttribute?.('position');
+  if (!pos) return { min: 0, max: 0 };
+  const arr = pos.array;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let i = 2; i < arr.length; i += 3) {
+    const z = arr[i];
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  }
+  if (!Number.isFinite(zMin) || !Number.isFinite(zMax)) return { min: 0, max: 0 };
+  return { min: zMin, max: zMax };
+}
+
+function _surfaceSagAndNormal(x, y, R){
+  if (!Number.isFinite(R) || Math.abs(R) < 1e-9) {
+    return { x, y, z: 0, nx: 0, ny: 0, nz: 1 };
+  }
+
+  const Ra = Math.abs(R);
+  let px = x;
+  let py = y;
+  let r2 = px * px + py * py;
+
+  if (r2 > Ra * Ra) {
+    const s = Ra / Math.sqrt(r2);
+    px *= s;
+    py *= s;
+    r2 = px * px + py * py;
+  }
+
+  const sgn = (R >= 0 ? 1 : -1);
+  const z = sgn * (Ra - Math.sqrt(Math.max(0, Ra * Ra - r2)));
+  const cx = 0;
+  const cy = 0;
+  const cz = sgn * Ra;
+
+  let nx = px - cx;
+  let ny = py - cy;
+  let nz = z - cz;
+  const invLen = 1.0 / Math.max(1e-12, Math.hypot(nx, ny, nz));
+  nx *= invLen;
+  ny *= invLen;
+  nz *= invLen;
+
+  return { x: px, y: py, z, nx, ny, nz };
+}
+
+function _applySurfaceProfile(geom, R){
+  const posAttr = geom.getAttribute('position');
+  const posArr = posAttr.array;
+  const nArr = new Float32Array(posArr.length);
+
+  for (let i = 0; i < posArr.length; i += 3) {
+    const x = posArr[i + 0];
+    const y = posArr[i + 1];
+    const s = _surfaceSagAndNormal(x, y, R);
+
+    posArr[i + 0] = s.x;
+    posArr[i + 1] = s.y;
+    posArr[i + 2] = s.z;
+
+    nArr[i + 0] = s.nx;
+    nArr[i + 1] = s.ny;
+    nArr[i + 2] = s.nz;
+  }
+
+  posAttr.needsUpdate = true;
+  geom.setAttribute('normal', new THREE.BufferAttribute(nArr, 3));
+  geom.getAttribute('normal').needsUpdate = true;
+}
+
+function _shiftGeometryZ(geom, dz){
+  const posAttr = geom.getAttribute('position');
+  const posArr = posAttr.array;
+  for (let i = 2; i < posArr.length; i += 3) posArr[i] += dz;
+  posAttr.needsUpdate = true;
+}
+
+function _buildSideWallFromMatchedSurfaces(frontGeom, backGeom){
+  const idxAttr = frontGeom.getIndex();
+  if (!idxAttr) return null;
+
+  const idx = idxAttr.array;
+  const posFront = frontGeom.getAttribute('position').array;
+  const posBack = backGeom.getAttribute('position').array;
+
+  const edgeMap = new Map();
+  const addEdge = (i1, i2) => {
+    const a = Math.min(i1, i2);
+    const b = Math.max(i1, i2);
+    const key = a + "_" + b;
+    const e = edgeMap.get(key);
+    if (e) e.count++;
+    else edgeMap.set(key, { a, b, count: 1 });
+  };
+
+  for (let i = 0; i < idx.length; i += 3) {
+    const a = idx[i];
+    const b = idx[i + 1];
+    const c = idx[i + 2];
+    addEdge(a, b);
+    addEdge(b, c);
+    addEdge(c, a);
+  }
+
+  const sidePositions = [];
+  const sideIndices = [];
+  let vBase = 0;
+
+  edgeMap.forEach(e => {
+    if (e.count !== 1) return;
+
+    const a = e.a;
+    const b = e.b;
+
+    const ax = posFront[3 * a], ay = posFront[3 * a + 1], az = posFront[3 * a + 2];
+    const bx = posFront[3 * b], by = posFront[3 * b + 1], bz = posFront[3 * b + 2];
+    const axb = posBack[3 * a], ayb = posBack[3 * a + 1], azb = posBack[3 * a + 2];
+    const bxb = posBack[3 * b], byb = posBack[3 * b + 1], bzb = posBack[3 * b + 2];
+
+    sidePositions.push(
+      ax, ay, az,
+      bx, by, bz,
+      axb, ayb, azb,
+      bxb, byb, bzb
+    );
+
+    sideIndices.push(
+      vBase, vBase + 1, vBase + 3,
+      vBase, vBase + 3, vBase + 2
+    );
+    vBase += 4;
+  });
+
+  if (!sidePositions.length) return null;
+
+  const sideGeom = new THREE.BufferGeometry();
+  sideGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sidePositions), 3));
+  sideGeom.setIndex(sideIndices);
+  sideGeom.computeVertexNormals();
+  sideGeom.computeBoundingBox();
+  sideGeom.computeBoundingSphere();
+
+  return sideGeom;
+}
+
+
+export function refreshMirrorVisual(el) {
+    if (!el?.mesh) return;
+    const collisionMesh = el.mesh;
+    const group = collisionMesh.children.find(c => c.isGroup);
+    if (!group) return;
+
+    // clear visuals
+    while (group.children.length) group.remove(group.children[0]);
+    // reset stored physical surfaces for propagation
+    el._surfaceMeshes = [];
+
+    // IMPORTANT: reset visual rotation so we don't accumulate transforms
+    group.rotation.set(0, 0, 0);
+
+    // base geometry * |scale| = world size
+    const base = collisionMesh.geometry?.parameters || {};
+    const baseW = base.width  ?? 0.004;
+    const baseH = base.height ?? 0.004;
+
+    // Use absolute value so negative scales don't explode
+    const sx = collisionMesh.scale.x || 0;
+    const sy = collisionMesh.scale.y || 0;
+    const sz = collisionMesh.scale.z || 0;
+
+    const absSx = Math.abs(sx);
+    const absSy = Math.abs(sy);
+    const absSz = Math.abs(sz);
+
+    const worldW = baseW * absSx;
+    const worldH = baseH * absSy;
+
+    // Inverse scales to neutralize the parent's non-uniform scaling
+    // (use magnitude so negative scales behave like positive)
+    const invScaleX = 1 / Math.max(1e-9, absSx);
+    const invScaleY = 1 / Math.max(1e-9, absSy);
+    const invScaleZ = 1 / Math.max(1e-9, absSz);
+
+
+    // Flat mirror visual thickness (unchanged)
+    const tBackFlat = 0.00012;
+    const isCurved = !el.props.flat && Number.isFinite(el.props.R);
+
+    // --- FLAT MIRROR: keep the old rectangular sandwich ---
+    if (!isCurved) {
+        const radius = Math.min(worldW, worldH) * 0.46;
+        const back = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, tBackFlat, 48),
+            matMirrorSide
+        );
+        back.rotation.x = Math.PI / 2;
+        back.position.z = -tBackFlat * 0.5;
+        back.userData.isVisualOnly = true;
+        back.scale.set(invScaleX, invScaleY, invScaleZ);
+        group.add(back);
+        el._surfaceMeshes = []; // no special surfaces for flat mirrors
+        const frontFlat = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, tBackFlat, 48),
+            matMirror
+        );
+        frontFlat.rotation.x = Math.PI / 2;
+        frontFlat.position.z = tBackFlat * 0.5 + 1e-5;
+        frontFlat.userData.isVisualOnly = true;
+        frontFlat.scale.set(invScaleX, invScaleY, invScaleZ);
+        group.add(frontFlat);
+        return;
+    }
+
+    // --- SPHERICAL MIRROR: curved front + planar back with adjustable thickness ---
+
+    // Thickness bookkeeping (meters): distance along local +z between curved vertex
+    // and planar back surface.
+    const DEFAULT_THICKNESS = 1.8e-4; // ~0.18 mm (matches previous visual)
+    if (!Number.isFinite(el.props.thickness) || el.props.thickness <= 0) {
+        el.props.thickness = DEFAULT_THICKNESS;
+    }
+
+    // Invert R for visual convention (user wants R>0 concave, R<0 convex)
+    const R_visual = -el.props.R;
+    const isVisuallyConvex = R_visual > 0;
+
+    // Rotate visuals so that for convex (R<0) the planar back ends up behind
+    // the curved face, matching the flat-mirror convention.
+    group.rotation.y = isVisuallyConvex ? Math.PI : 0;
+
+    // Create the base curved geometry
+    const capGeom = _buildSphericalPatchGeometry(worldW, worldH, R_visual, 128);
+    const posAttr = capGeom.getAttribute('position');
+    const posArr = posAttr.array;
+
+    // Clone geometry for the flat back before modifying the front
+    const backGeom = capGeom.clone();
+
+    let thicknessMin = 1e-6; // geometry-based minimum so surfaces never overlap
+
+    if (isVisuallyConvex) {
+        // ==== CONVEX (user R < 0) ====
+        // The builder gives z>=0, with z=0 at center (thinnest point). We must flip this profile.
+        const normAttr = capGeom.getAttribute('normal');
+        const normArr = normAttr.array;
+        let z_max = 0;
+        for (let i = 2; i < posArr.length; i += 3) {
+            if (posArr[i] > z_max) z_max = posArr[i];
+        }
+
+        // Transform z -> z_max - z. This puts the peak (z=z_max) at the center
+        // and the base (z≈0) at the edge. Also flip normals to match.
+        for (let i = 0; i < posArr.length; i += 3) {
+            posArr[i + 2] = z_max - posArr[i + 2];
+            normArr[i + 2] *= -1;
+        }
+        posAttr.needsUpdate = true;
+        normAttr.needsUpdate = true;
+
+        // Now the front surface lives in [zMin, zMax], with zMax at the vertex
+        // along the optical axis and zMin near the rim.
+        let zMin = +Infinity, zMax = -Infinity;
+        for (let i = 2; i < posArr.length; i += 3) {
+            const z = posArr[i];
+            if (z < zMin) zMin = z;
+            if (z > zMax) zMax = z;
+        }
+
+        // To keep the planar back behind the *entire* spherical patch we require:
+        //   planeZ <= zMin
+        // and thickness = zMax - planeZ  ≥  zMax - zMin
+        thicknessMin = Math.max(1e-6, zMax - zMin);
+        el.props._thicknessMin = thicknessMin;
+
+        let thickness = el.props.thickness;
+        if (!Number.isFinite(thickness) || thickness < thicknessMin) {
+            thickness = thicknessMin;
+            el.props.thickness = thickness;
+        }
+
+        const planeZ = zMax - thickness;
+        const safePlaneZ = Math.min(planeZ, zMin); // numeric safety
+
+        const backPosAttr = backGeom.getAttribute('position');
+        const backPosArr = backPosAttr.array;
+        for (let i = 2; i < backPosArr.length; i += 3) {
+            backPosArr[i] = safePlaneZ;
+        }
+        backPosAttr.needsUpdate = true;
+    } else {
+        // ==== CONCAVE (user R > 0) ====
+        // The builder gives z<=0, with z=0 at the center (vertex) and negative
+        // sag towards the rim. Putting the planar back at z = +thickness keeps it
+        // behind the entire curved surface for any thickness > 0.
+        thicknessMin = 1e-6;
+        el.props._thicknessMin = thicknessMin;
+
+        let thickness = el.props.thickness;
+        if (!Number.isFinite(thickness) || thickness < thicknessMin) {
+            thickness = Math.max(thicknessMin, DEFAULT_THICKNESS);
+            el.props.thickness = thickness;
+        }
+
+        const backPosAttr = backGeom.getAttribute('position');
+        const backPosArr = backPosAttr.array;
+        for (let i = 2; i < backPosArr.length; i += 3) {
+            backPosArr[i] = thickness; // plane behind vertex at z=0
+        }
+        backPosAttr.needsUpdate = true;
+    }
+
+    // --- Build side wall between front (capGeom) and back (backGeom) ---
+
+    const idxAttr = capGeom.getIndex();
+    if (idxAttr) {
+        const idx = idxAttr.array;
+        const posFront = capGeom.getAttribute('position').array;
+        const posBack  = backGeom.getAttribute('position').array;
+
+        // Find boundary edges (edges used by only one triangle)
+        const edgeMap = new Map();
+        const addEdge = (i1, i2) => {
+            const a = Math.min(i1, i2);
+            const b = Math.max(i1, i2);
+            const key = a + "_" + b;
+            const e = edgeMap.get(key);
+            if (e) {
+                e.count++;
+            } else {
+                edgeMap.set(key, { a, b, count: 1 });
+            }
+        };
+
+        for (let i = 0; i < idx.length; i += 3) {
+            const a = idx[i], b = idx[i+1], c = idx[i+2];
+            addEdge(a, b);
+            addEdge(b, c);
+            addEdge(c, a);
+        }
+
+        const sidePositions = [];
+        const sideIndices = [];
+        let vBase = 0;
+
+        edgeMap.forEach(e => {
+            if (e.count === 1) {
+                const a = e.a;
+                const b = e.b;
+
+                // Front positions
+                const ax = posFront[3*a], ay = posFront[3*a+1], az = posFront[3*a+2];
+                const bx = posFront[3*b], by = posFront[3*b+1], bz = posFront[3*b+2];
+
+                // Back positions (same indices in backGeom)
+                const axb = posBack[3*a], ayb = posBack[3*a+1], azb = posBack[3*a+2];
+                const bxb = posBack[3*b], byb = posBack[3*b+1], bzb = posBack[3*b+2];
+
+                // Quad: (front a, front b, back b, back a)
+                sidePositions.push(
+                    ax,  ay,  az,   // v0
+                    bx,  by,  bz,   // v1
+                    axb, ayb, azb,  // v2
+                    bxb, byb, bzb   // v3
+                );
+
+                // Two triangles for the quad
+                sideIndices.push(
+                    vBase,     vBase+1, vBase+3,
+                    vBase,     vBase+3, vBase+2
+                );
+                vBase += 4;
+            }
+        });
+
+        if (sidePositions.length > 0) {
+            const sideGeom = new THREE.BufferGeometry();
+            sideGeom.setAttribute(
+                'position',
+                new THREE.BufferAttribute(new Float32Array(sidePositions), 3)
+            );
+            sideGeom.setIndex(sideIndices);
+            sideGeom.computeVertexNormals();
+            sideGeom.computeBoundingBox();
+            sideGeom.computeBoundingSphere();
+
+            const sideMesh = new THREE.Mesh(sideGeom, matMirrorSide);
+            sideMesh.userData.isVisualOnly = true;
+            sideMesh.userData.element = el;
+            sideMesh.userData.surfaceKind = 'side';
+            sideMesh.scale.set(invScaleX, invScaleY, invScaleZ);
+            group.add(sideMesh);
+
+            // track as a physical surface
+            el._surfaceMeshes.push(sideMesh);
+        }
+    }
+
+    // --- Finalize and add meshes (front + back) ---
+
+    // Front mesh (curved)
+    capGeom.computeBoundingBox();
+    capGeom.computeBoundingSphere();
+    const cap = new THREE.Mesh(capGeom, matMirror);
+    cap.userData.isVisualOnly = true;
+    cap.userData.element = el;
+    cap.userData.surfaceKind = 'front';
+    cap.scale.set(invScaleX, invScaleY, invScaleZ);
+    group.add(cap);
+
+    el._surfaceMeshes.push(cap);
+
+    
+    // Back mesh (flat, with constant normals)
+    const nSign = isVisuallyConvex ? 1 : -1; // Pointing away from the mirror's interior
+    const backPosAttrFinal = backGeom.getAttribute('position');
+    const nArr = new Float32Array(backPosAttrFinal.array.length);
+    for (let i = 0; i < nArr.length; i += 3) {
+        nArr[i + 0] = 0;
+        nArr[i + 1] = 0;
+        nArr[i + 2] = nSign;
+    }
+    backGeom.setAttribute('normal', new THREE.BufferAttribute(nArr, 3));
+    backGeom.computeBoundingBox();
+    backGeom.computeBoundingSphere();
+    
+    const back = new THREE.Mesh(backGeom, matMirror);
+    back.userData.isVisualOnly = true;
+    back.userData.element = el;
+    back.userData.surfaceKind = 'back';
+    back.scale.set(invScaleX, invScaleY, invScaleZ);
+    group.add(back);
+
+    el._surfaceMeshes.push(back);
+
+}
+
+export function refreshThickLensVisual(el) {
+    if (!el?.mesh) return;
+    const collisionMesh = el.mesh;
+    const group = collisionMesh.children.find(c => c.isGroup);
+    if (!group) return;
+
+    while (group.children.length) group.remove(group.children[0]);
+    el._surfaceMeshes = [];
+    group.rotation.set(0, 0, 0);
+
+    const base = collisionMesh.geometry?.parameters || {};
+    const baseW = base.width ?? 0.004;
+    const baseH = base.height ?? 0.004;
+
+    const sx = collisionMesh.scale.x || 0;
+    const sy = collisionMesh.scale.y || 0;
+    const sz = collisionMesh.scale.z || 0;
+    const absSx = Math.abs(sx);
+    const absSy = Math.abs(sy);
+    const absSz = Math.abs(sz);
+
+    const worldW = baseW * absSx;
+    const worldH = baseH * absSy;
+
+    const invScaleX = 1 / Math.max(1e-9, absSx);
+    const invScaleY = 1 / Math.max(1e-9, absSy);
+    const invScaleZ = 1 / Math.max(1e-9, absSz);
+
+    const DEFAULT_THICKNESS = 0.004;
+    if (!Number.isFinite(el.props.thickness) || el.props.thickness <= 0) {
+        el.props.thickness = DEFAULT_THICKNESS;
+    }
+
+    const R1 = Number(el.props.R1);
+    const R2 = Number(el.props.R2);
+
+    const finiteRadii = [R1, R2]
+        .filter(r => Number.isFinite(r) && Math.abs(r) >= 1e-9)
+        .map(r => Math.abs(r));
+    const apertureRadius = finiteRadii.length ? Math.min(...finiteRadii) : Number.POSITIVE_INFINITY;
+
+    const baseGeom = Number.isFinite(apertureRadius)
+        ? _buildSphericalPatchGeometry(worldW, worldH, apertureRadius, 128)
+        : _buildSphericalPatchGeometry(worldW, worldH, 1e12, 128);
+
+    const frontGeom = baseGeom.clone();
+    const backGeom = baseGeom.clone();
+
+    _applySurfaceProfile(frontGeom, R1);
+    _applySurfaceProfile(backGeom, R2);
+
+    const frontRange = _geometryZRange(frontGeom);
+    const backRange = _geometryZRange(backGeom);
+    const thicknessMin = Math.max(1e-6, frontRange.max - backRange.min + 1e-6);
+    el.props._thicknessMin = thicknessMin;
+
+    let thickness = Number(el.props.thickness);
+    if (!Number.isFinite(thickness) || thickness < thicknessMin) {
+        thickness = Math.max(thicknessMin, DEFAULT_THICKNESS);
+        el.props.thickness = thickness;
+    }
+
+    _shiftGeometryZ(backGeom, thickness);
+
+    const sideGeom = _buildSideWallFromMatchedSurfaces(frontGeom, backGeom);
+    if (sideGeom) {
+        const side = new THREE.Mesh(sideGeom, matThickLensSide);
+        side.userData.isVisualOnly = true;
+        side.userData.element = el;
+        side.userData.surfaceKind = 'side';
+        side.scale.set(invScaleX, invScaleY, invScaleZ);
+        group.add(side);
+        el._surfaceMeshes.push(side);
+    }
+
+    frontGeom.computeBoundingBox();
+    frontGeom.computeBoundingSphere();
+    const front = new THREE.Mesh(frontGeom, matLens);
+    front.userData.isVisualOnly = true;
+    front.userData.element = el;
+    front.userData.surfaceKind = 'front';
+    front.scale.set(invScaleX, invScaleY, invScaleZ);
+    group.add(front);
+    el._surfaceMeshes.push(front);
+
+    backGeom.computeBoundingBox();
+    backGeom.computeBoundingSphere();
+    const back = new THREE.Mesh(backGeom, matLens);
+    back.userData.isVisualOnly = true;
+    back.userData.element = el;
+    back.userData.surfaceKind = 'back';
+    back.scale.set(invScaleX, invScaleY, invScaleZ);
+    group.add(back);
+    el._surfaceMeshes.push(back);
+}
+
+
+
+export function makeLabel(text){
+  const c = document.createElement('canvas'); const fs=48;
+  const ctx=c.getContext('2d'); ctx.font = `Bold ${fs}px Arial`;
+  const w = Math.max(1, ctx.measureText(text).width + 20); const h = fs + 16;
+  c.width=w; c.height=h;
+  ctx.font = `Bold ${fs}px Arial`;
+  ctx.fillStyle="rgba(0, 0, 0, 0.5)";
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="rgba(255, 255, 255, 0.95)";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w/2, h/2);
+  const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, depthTest:false, transparent:true }));
+  spr.scale.set(w/40000, h/40000, 1);
+  spr.position.set(0, 0.0025, 0.00021);
+  spr.renderOrder=10;
+  return spr;
+}
+
+export function clampToPlaneXZ(obj){
+  obj.rotation.order = 'YXZ';
+  const e = new THREE.Euler().setFromQuaternion(obj.quaternion, 'YXZ');
+  obj.rotation.set(e.x, e.y, 0);
+}
+
+function axisAngleInUV(el, ctx, axisDeg){
+  const qW = el.mesh.getWorldQuaternion(new THREE.Quaternion());
+  const xW = new THREE.Vector3(1,0,0).applyQuaternion(qW).normalize();
+  const yW = new THREE.Vector3(0,1,0).applyQuaternion(qW).normalize();
+  const thL = THREE.MathUtils.degToRad(axisDeg);
+  const aW = xW.clone().multiplyScalar(Math.cos(thL)).add(yW.clone().multiplyScalar(Math.sin(thL))).normalize();
+  const { u, v } = buildTransverseBasis(ctx?.dir || new THREE.Vector3(0,0,1), ctx?.basisUp);
+  return Math.atan2(aW.dot(u), aW.dot(v));
+}
+
+function attachUGIAxis(el){
+  const g = new THREE.Group(); g.name = 'UGI';
+  // CHANGED: Increased rod radius and ball size for better visibility
+  const zOff = 0.00012, stalkLen = 0.0045, extraReach = 0.0018, rodRad = 0.0001; // Was 0.00004
+  const rod = new THREE.Mesh( new THREE.CylinderGeometry(rodRad, rodRad, stalkLen, 16), new THREE.MeshStandardMaterial({ color:0xe6edf3, metalness:0.6, roughness:0.35 }) );
+  rod.rotation.z = Math.PI/2; rod.position.set(stalkLen/2, 0, zOff);
+  const ball = new THREE.Mesh( new THREE.SphereGeometry(0.0004, 24, 16), new THREE.MeshStandardMaterial({ color:0x7ee787, metalness:0.4, roughness:0.4 }) ); // Was 0.0002
+  ball.position.set(stalkLen + extraReach, 0, zOff);
+  const hit = new THREE.Mesh( new THREE.SphereGeometry(0.0012, 24, 16), new THREE.MeshBasicMaterial({ transparent:true, opacity:0.0, depthWrite:false }) ); // Was 0.0008
+  hit.position.copy(ball.position);
+  ball.userData.isUGI = true; ball.userData.element = el; hit.userData.isUGI = true; hit.userData.element = el;
+  g.add(rod); g.add(ball); g.add(hit); g.renderOrder = 20;
+  el.mesh.add(g);
+  const setAngle = (deg)=>{ g.rotation.z = THREE.MathUtils.degToRad(deg||0); };
+  setAngle(el.props.axisDeg || 0);
+  el.ugi = { group:g, handle:hit, ball, setAngle };
+  return el.ugi;
+}
+
+/* ----------------- Factories ----------------- */
+export function makeLens({f=1.0, label}={}){
+  const mesh = makePanel(0.0036,0.0036, matLens, 'disc');
+  const el = {
+    id: ELEMENT_ID++, type:"lens", mesh, props:{ f, label },
+    abcd(q){ const A=1, B=0, C=-1/this.props.f, D=1; const Aq = q.clone().mul(new Complex(A,0)); const num = Aq.add(B); const Cq = q.clone().mul(new Complex(C,0)); const den = Cq.add(D); return num.div(den); },
+    jones(j){ return j; }
+  };
+  mesh.userData.element = el; updateElementLabel(el); return el;
+}
+
+export function makeThickLens({
+  R1 = 0.05,
+  R2 = -0.05,
+  n = 1.5,
+  thickness = 0.004,
+  label
+} = {}) {
+  const mesh = makePanel(0.004, 0.004, matLens);
+  const el = {
+    id: ELEMENT_ID++, type: "thickLens", mesh,
+    props: { R1, R2, n, thickness, label },
+    abcd(q){ return q; },
+    abcdTransmit(q, ctx = {}) {
+      const surfaceKind = ctx.surfaceKind || "front";
+      const n1 = Number.isFinite(ctx.n1) ? Number(ctx.n1) : 1.0;
+      const n2Raw = Number.isFinite(ctx.n2) ? Number(ctx.n2) : Number(this.props.n ?? 1.5);
+      const n2 = (Number.isFinite(n2Raw) && Math.abs(n2Raw) > 1e-12) ? n2Raw : 1.0;
+      const dirSign = Number.isFinite(ctx.dirSign) ? Number(ctx.dirSign) : 1;
+
+      let C = 0;
+      const Rsurf = (surfaceKind === "back") ? Number(this.props.R2) : Number(this.props.R1);
+      if (Number.isFinite(Rsurf) && Math.abs(Rsurf) >= 1e-9) {
+        const Reff = (dirSign >= 0) ? Rsurf : -Rsurf;
+        C = (n1 - n2) / (Reff * n2);
+      }
+
+      const D = n1 / n2;
+      const Aq = q.clone().mul(new Complex(1, 0));
+      const num = Aq.add(0);
+      const Cq = q.clone().mul(new Complex(C, 0));
+      const den = Cq.add(D);
+      return num.div(den);
+    },
+    jones(j){ return j; }
+  };
+
+  mesh.userData.element = el;
+  updateElementLabel(el);
+  refreshThickLensVisual(el);
+  return el;
+}
+
+export function makeMirror({
+  flat = true,
+  R = 2.0,
+  refl = 1.0,
+  n = 1.5,
+  dichroic = false,
+  reflBand_nm = { min: 400, max: 700 },
+  transBand_nm = { min: 700, max: 1100 },
+  thickness = 1.8e-4,
+  label
+} = {}) {
+  const mesh = makePanel(0.004,0.004, matMirror, 'disc');
+  const el = {
+    id: ELEMENT_ID++, type: "mirror", mesh,
+    props: { flat, R, refl, n, dichroic, reflBand_nm, transBand_nm, thickness, label },
+
+    // Reflection on curved surface (unchanged)
+    abcd(q){
+      if (this.props.flat) return q;
+      const C = -2 / this.props.R;   // uses sign of R
+      const A = 1, B = 0, D = 1;
+      const Aq = q.clone().mul(new Complex(A, 0));
+      const num = Aq.add(B);
+      const Cq = q.clone().mul(new Complex(C, 0));
+      const den = Cq.add(D);
+      return num.div(den);
+    },
+
+    // Transmission through spherical mirror substrate:
+    // - correct sign of R
+    // - uses n1 -> n2 at each surface
+    // - thickness enters because front/back surfaces are separated in space
+    abcdTransmit(q, ctx = {}) {
+      if (this.props.flat) return q;
+
+      const R = this.props.R;
+      const nGlass = this.props.n ?? 1.5;
+
+      // If no good radius, nothing to do
+      if (!Number.isFinite(R) || Math.abs(R) < 1e-9) return q;
+
+      const surfaceKind = ctx.surfaceKind || "front";
+      const n1 = Number.isFinite(ctx.n1) ? ctx.n1 : 1.0;
+      const n2 = Number.isFinite(ctx.n2) ? ctx.n2 : nGlass;
+
+      let A = 1, B = 0, C = 0, D = 1;
+
+      if (surfaceKind === "front") {
+        // Determine direction based on refractive indices
+        // We assume "exiting" if we are starting in the dense medium (glass)
+        const isExiting = Math.abs(n1 - nGlass) < 1e-6;
+
+        // Entering (Air->Glass): Needs -R (upstream CoC for Concave)
+        // Exiting (Glass->Air):  Needs +R (downstream CoC for Concave)
+        const effectiveR = isExiting ? R : -R;
+
+        C = (n1 - n2) / (effectiveR * n2);
+        D = n1 / n2;
+      } else if (surfaceKind === "back") {
+        // Planar interface (R = infinity)
+        C = 0;
+        D = n1 / n2;
+      } else {
+        // Fallback for old behavior
+        C = -((nGlass - 1) / R);
+      }
+
+      const Aq = q.clone().mul(new Complex(A, 0));
+      const num = Aq.add(B);
+      const Cq = q.clone().mul(new Complex(C, 0));
+      const den = Cq.add(D);
+      return num.div(den);
+    },
+
+    jones(j){ return j; }
+  };
+
+  mesh.userData.element = el;
+  updateElementLabel(el);
+
+  // initial visual shape
+  refreshMirrorVisual(el);
+  return el;
+}
+
+export function makePolarizer({axisDeg=0, label}={}){
+  const mesh = makePanel(0.0036,0.0036, matGlass, 'disc');
+  const el = {
+    id: ELEMENT_ID++, type:"polarizer", mesh, props:{ axisDeg, label },
+    abcd(q){ return q; },
+    jones(j, ctx){ const th = axisAngleInUV(this, ctx, this.props.axisDeg); return Rtheta(-th).mul(MPol).mul(Rtheta(th)).mulVec(j); }
+  };
+  mesh.userData.element = el; updateElementLabel(el); attachUGIAxis(el); return el;
+}
+
+export function makeWaveplate({type="HWP", delta=Math.PI, axisDeg = 0, label}={}){
+  const mesh = makePanel(0.0036,0.0036, matWave, 'disc');
+  const el = {
+    id: ELEMENT_ID++, type:"waveplate", mesh, props:{ delta, type, axisDeg, label },
+    abcd(q){ return q; },
+    jones(j, ctx){ const th = axisAngleInUV(this, ctx, this.props.axisDeg); return Rtheta(-th).mul(MWaveplate(this.props.delta)).mul(Rtheta(th)).mulVec(j); }
+  };
+  mesh.userData.element = el; updateElementLabel(el); attachUGIAxis(el); return el;
+}
+
+export function makeFaraday({phiDeg=45, label}={}){
+  const mesh = makePanel(0.0036,0.0036, matFaraday, 'disc');
+  const el = {
+    id: ELEMENT_ID++, type:"faraday", mesh, props:{ phiDeg, label },
+    abcd(q){ return q; },
+    jones(j, ctx){ const phi = THREE.MathUtils.degToRad(this.props.phiDeg || 0); const qW = this.mesh.getWorldQuaternion(new THREE.Quaternion()); const nW = new THREE.Vector3(0,0,1).applyQuaternion(qW).normalize(); const k  = (ctx && ctx.dir ? ctx.dir.clone().normalize() : new THREE.Vector3(0,0,1)); const sameFace = nW.dot(k) >= 0; const sgn = sameFace ? 1 : -1; return Rtheta(-sgn * phi).mulVec(j); }
+  };
+  mesh.userData.element = el; updateElementLabel(el); return el;
+}
+
+export function makeBeamSplitter({R=0.5, polarizing=false, polTransmit="Vertical", label} = {}) {
+  const mesh = makePanel(0.0036, 0.0036, matBS, 'disc');
+  const el = {
+    id: ELEMENT_ID++, type:"beamSplitter", mesh, props:{ R, polarizing, polTransmit, label },
+    abcd(q){ return q; }, jones(j){ return j; }
+  };
+  mesh.userData.element = el; updateElementLabel(el); return el;
+}
+
+export function makeBeamBlock({label} = {}) {
+  const mesh = makePanel(0.0042, 0.0042, matBlock);
+  const el = {
+    id: ELEMENT_ID++, type:"beamBlock", mesh, props:{ label },
+    abcd(q){ return q; }, jones(j){ return j; }
+  };
+  mesh.userData.element = el; updateElementLabel(el); return el;
+}
+
+export function makeGrating({mode="reflective", d_um=1.0, orders=1, label} = {}) {
+  const mesh = makePanel(0.0042, 0.0042, matGrating);
+  const el = {
+    id: ELEMENT_ID++, type:"grating", mesh, props:{ mode, d_um, orders, label },
+    abcd(q){ return q; }, jones(j){ return j; }
+  };
+  mesh.userData.element = el; updateElementLabel(el); return el;
+}
+
+export function makeMultimeter({label} = {}){
+  const mesh = makePanel(0.0034, 0.0034, matMeter);
+  const el = {
+    id: ELEMENT_ID++, type:"multimeter", mesh, props:{ label },
+    abcd(q){ return q; }, jones(j){ return j; }
+  };
+  mesh.userData.element = el; updateElementLabel(el); return el;
+}
+
+export function updateElementLabel(el){
+    const customLabel = el.props.label;
+    const hasCustomLabel = customLabel != null && customLabel.trim() !== '';
+    const fmtMm = (m, digits = 1) => Number.isFinite(m) ? (m * 1000).toFixed(digits) : "inf";
+    const fmtNum = (v, digits = 2, fallback = "inf") => Number.isFinite(v) ? Number(v).toFixed(digits) : fallback;
+
+    const defaultText =
+        el.type === "lens" ? `薄透镜 f=${(el.props.f * 1000).toFixed(1)} mm` :
+        el.type === "thickLens" ? `厚透镜 (R1=${fmtMm(el.props.R1)} mm, R2=${fmtMm(el.props.R2)} mm, n=${fmtNum(el.props.n, 2, "1.50")}, t=${fmtMm(el.props.thickness, 2)} mm)` :
+        el.type === "mirror" ? (
+            el.props.dichroic ?
+            (el.props.flat ? `反射镜 (二向色)` : `反射镜 (R=${(el.props.R * 1000).toFixed(1)} mm, 二向色)`) :
+            (el.props.flat ? `反射镜 (平面, R=${Math.round((el.props.refl ?? 1) * 100)}%)` : `反射镜 (R=${(el.props.R * 1000).toFixed(1)} mm, R=${Math.round((el.props.refl ?? 1) * 100)}%)`)
+        ) :
+        el.type === "polarizer" ? `偏振片` :
+        el.type === "waveplate" ? (el.props.type === 'Custom' ? `波片 (Δ=${THREE.MathUtils.radToDeg(el.props.delta || 0).toFixed(1)}°)`: `波片 (${el.props.type})`) :
+        el.type === "beamSplitter" ? (el.props.polarizing ? `偏振分束器 (T=${el.props.polTransmit[0]})` : `分束器 R=${Math.round(el.props.R * 100)}%`) :
+        el.type === "beamBlock" ? `光束阻挡器` :
+        el.type === "grating" ? `光栅 (${el.props.mode === "reflective" ? "反" : "透"}, d=${(el.props.d_um).toFixed(3)}µm, ±${el.props.orders|0})` :
+        el.type === "multimeter" ? `探测器` :
+        el.type === "faraday" ? `法拉第旋光器 (${el.props.phiDeg}°)` : "";
+
+    const txt = hasCustomLabel ? customLabel : defaultText;
+
+    let spr = el.mesh.children.find(c => c.isSprite);
+
+    if (!spr && !txt) return;
+    if (!spr) {
+        spr = makeLabel(txt);
+        el.mesh.add(spr);
+    }
+    
+    if (!txt) {
+        spr.visible = false;
+        return;
+    }
+    spr.visible = true;
+
+    // Create a new canvas to prevent drawing artifacts.
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const fs = 48;
+    ctx.font = `Bold ${fs}px Arial`;
+    
+    const w = Math.max(1, ctx.measureText(txt).width + 20);
+    const h = fs + 16;
+    canvas.width = w;
+    canvas.height = h;
+
+    // Redraw everything on the new canvas.
+    ctx.font = `Bold ${fs}px Arial`;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, w / 2, h / 2);
+    
+    // Create a new texture from the new canvas.
+    const newTexture = new THREE.CanvasTexture(canvas);
+    newTexture.minFilter = THREE.LinearFilter;
+    
+    // Dispose of the old texture and apply the new one.
+    spr.material.map?.dispose();
+    spr.material.map = newTexture;
+    spr.material.needsUpdate = true;
+
+    // Reset the sprite's scale to match the new texture's aspect ratio.
+    spr.scale.set(w / 40000, h / 40000, 1);
+    
+    // Invalidate the cached world scale so it gets recalculated correctly.
+    delete spr.userData.desiredWorldScale;
+}
