@@ -7,5 +7,5 @@
 `npm run build:basic`（基础条目加主题条目，产物在 `dist-basic/`）。
 开发服务器需安装后重新启动。移走库目录并重新构建即可卸载；已经导出的原生场景仍可载入。
 
-偏振库源包位于 `../library-packages/polarization/`，默认未安装。
+主题源包位于 `../library-packages/`。本地已安装偏振、几何光学和高斯光束三个库；基础版26条、默认版30条。移走某个主题目录再构建，可独立停用该库。
 接口和安装说明见 [模块化光具库](../docs/OPTICS_LIBRARIES.md)。

@@ -3,6 +3,9 @@ import { resolve, join } from 'node:path';
 
 const identifier = /^[a-z][a-z0-9-]*$/;
 const definitions = {
+  lens: { f: [-10, 10] },
+  thickLens: { R1: [-10, 10], R2: [-10, 10], n: [1, 3], thickness: [0.00001, 0.05] },
+  mirror: { flat: 'boolean', R: [-10, 10], refl: [0, 1], n: [1, 3], thickness: [0.00001, 0.05] },
   polarizer: { axisDeg: [-360, 360] },
   waveplate: { axisDeg: [-360, 360], delta: [-2 * Math.PI, 2 * Math.PI], type: ['HWP', 'QWP'] },
   faraday: { phiDeg: [-360, 360] },
@@ -14,7 +17,7 @@ function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** API v1 is data only. Only native polarization factories are exposed. */
+/** API v1 is data only; each exposed factory belongs to the original laboratory. */
 export function validateLibrary(value, origin = 'library.json') {
   const fail = (field, message) => { throw new Error(`${origin}: ${field}: ${message}`); };
   const keys = (record, allowed, field) => {
@@ -45,6 +48,9 @@ export function validateLibrary(value, origin = 'library.json') {
       } else if (typeof rule[0] === 'number') {
         if (typeof input !== 'number' || !Number.isFinite(input) || input < rule[0] || input > rule[1]) fail(`${field}.params.${key}`, `expected finite number in [${rule}]`);
       } else if (!rule.includes(input)) fail(`${field}.params.${key}`, `expected one of ${rule}`);
+    }
+    for (const key of ['f', 'R', 'R1', 'R2']) {
+      if (Object.hasOwn(preset.params, key) && Math.abs(preset.params[key]) < 1e-6) fail(`${field}.params.${key}`, 'magnitude must be at least 1e-6 metres');
     }
   }
   return structuredClone(value);

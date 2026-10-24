@@ -1,6 +1,6 @@
 {
   "name": "beambench",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "3D Optical Laboratory for human and AI interaction - BB84 quantum key distribution teaching",
   "type": "module",
   "scripts": {
@@ -18,9 +18,12 @@
     "test:perf:browser": "node tools/perf-browser.mjs",
     "build:standalone": "npm run build && node tools/make-standalone.mjs",
     "build:basic": "npm run typecheck && node tools/build-basic.mjs",
+    "build:detailed": "npm run typecheck && node tools/build-detailed.mjs",
+    "build:basic:detailed": "npm run typecheck && node tools/build-detailed.mjs --basic",
     "pack:optics": "node tools/pack-optics.mjs",
     "verify:optics": "node tools/verify-optics-build.mjs",
     "test:optics:browser": "playwright test --config playwright.optics.config.ts",
+    "test:models:browser": "playwright test --config playwright.models.config.ts",
     "release": "node tools/make-release.mjs"
   },
   "dependencies": {

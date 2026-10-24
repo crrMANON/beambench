@@ -85,7 +85,8 @@ describe('Native polarization preset experiments', () => {
     native = await import('../../src/upstream/elements.js');
   });
   afterAll(() => vi.unstubAllGlobals());
-  const factories = () => ({ polarizer: native.makePolarizer, waveplate: native.makeWaveplate,
+  const factories = () => ({ lens: native.makeLens, thickLens: native.makeThickLens, mirror: native.makeMirror,
+    polarizer: native.makePolarizer, waveplate: native.makeWaveplate,
     faraday: native.makeFaraday, beamSplitter: native.makeBeamSplitter, multimeter: native.makeMultimeter });
   const power = (j: any[]) => j.reduce((sum, c) => sum + c.re ** 2 + c.im ** 2, 0);
   const beam = { dir: new THREE.Vector3(0, 0, 1) };

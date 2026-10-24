@@ -37,7 +37,8 @@ Original author: Hussein-Tofaili; upstream maintainer: VisuPhy.
 This is an independently modified derivative, not an official upstream release.
 Local modifications include the laboratory environment and optomechanics,
 Chinese controls, placement/history/host integration, and the data-only modular
-optics-library interface and polarization presets. Changes were made on or
+optics-library interface and polarization, geometric-optics and Gaussian-beam
+presets. Changes were made on or
 before 2026-10-24. Copyright and license notices in the imported sources remain
 intact. All local additions are conveyed under GPL-3.0-or-later.
 
@@ -47,3 +48,8 @@ previous shortened root text was not a valid verbatim copy of that license.
 Third-party runtime license texts are in THIRD_PARTY_NOTICES.txt.
 The modular library code in src/library/ and the data presets in
 library-packages/ are also covered by the GPL-3.0-or-later declaration above.
+
+Version 1.2.0 adds optional procedural detailed models in src/models/,
+detailed-build adapters, front-absorbing detector behavior in that profile,
+and the detailed-model UGI shaft connection correction. The original rendering
+profile and imported source notices remain intact.

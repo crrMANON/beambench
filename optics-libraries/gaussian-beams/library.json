@@ -1,0 +1,46 @@
+{
+  "apiVersion": 1,
+  "id": "gaussian-beams",
+  "name": "高斯光束",
+  "version": "1.0.0",
+  "presets": [
+    {
+      "id": "positive-25",
+      "name": "高斯·凸透镜25",
+      "factory": "lens",
+      "params": {
+        "f": 0.025
+      }
+    },
+    {
+      "id": "positive-50",
+      "name": "高斯·凸透镜50",
+      "factory": "lens",
+      "params": {
+        "f": 0.05
+      }
+    },
+    {
+      "id": "positive-100",
+      "name": "高斯·凸透镜100",
+      "factory": "lens",
+      "params": {
+        "f": 0.1
+      }
+    },
+    {
+      "id": "negative-25",
+      "name": "高斯·凹透镜25",
+      "factory": "lens",
+      "params": {
+        "f": -0.025
+      }
+    },
+    {
+      "id": "power-meter",
+      "name": "高斯·功率计",
+      "factory": "multimeter",
+      "params": {}
+    }
+  ]
+}

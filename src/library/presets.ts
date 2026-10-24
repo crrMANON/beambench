@@ -1,7 +1,7 @@
 export interface OpticalPreset {
   id: string;
   name: string;
-  factory: 'polarizer' | 'waveplate' | 'faraday' | 'beamSplitter' | 'multimeter';
+  factory: 'polarizer' | 'waveplate' | 'faraday' | 'beamSplitter' | 'multimeter' | 'lens' | 'thickLens' | 'mirror';
   params: Record<string, string | number | boolean>;
 }
 
@@ -64,5 +64,20 @@ export function waveplateParams(props: Record<string, unknown>) {
     delta: typeof props.delta === 'number' && Number.isFinite(props.delta)
       ? props.delta : type === 'QWP' ? Math.PI / 2 : Math.PI,
     axisDeg: Number(props.fastAxisAngleDeg ?? props.axisDeg) || 0,
+  };
+}
+
+/** Preserve curved native mirrors through domain creation and restoration. */
+export function mirrorParams(props: Record<string, unknown>) {
+  const finite = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return {
+    flat: props.flat !== false,
+    R: finite(props.R, 2),
+    refl: finite(props.reflectivity ?? props.refl, 1),
+    n: finite(props.n, 1.5),
+    thickness: finite(props.thickness, 1.8e-4),
+    dichroic: props.dichroic === true,
+    reflBand_nm: props.reflBand_nm ?? { min: 400, max: 700 },
+    transBand_nm: props.transBand_nm ?? { min: 700, max: 1100 },
   };
 }

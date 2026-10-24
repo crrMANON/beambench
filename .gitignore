@@ -1,6 +1,9 @@
 node_modules/
 dist/
 dist-basic/
+dist-detailed/
+dist-basic-detailed/
+feedback/
 artifacts/
 release/
 recovery/

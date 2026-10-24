@@ -42,7 +42,7 @@ import {
 import * as pol from './polarization.js?v=1.0.15';
 import * as Propagation from './propagation.js?v=1.0.15';
 import { buildTransverseBasis } from './beam-frame.js?v=1.0.15';
-import { presetCatalog, installPalette, createPreset, waveplateParams } from '../library/presets';
+import { presetCatalog, installPalette, createPreset, waveplateParams, mirrorParams } from '../library/presets';
 
 const opticalPresets = presetCatalog(__BB_OPTICS_LIBRARIES__);
 installPalette(document.getElementById('palette'), __BB_LIBRARY_PROFILE__, opticalPresets);
@@ -536,6 +536,7 @@ function spawnAt(type, pos) {
     const preset = opticalPresets.get(type);
     if (preset) {
         const element = createPreset(preset, {
+            lens: makeLens, thickLens: makeThickLens, mirror: makeMirror,
             polarizer: makePolarizer, waveplate: makeWaveplate, faraday: makeFaraday,
             beamSplitter: makeBeamSplitter, multimeter: makeMultimeter,
         });
@@ -2637,9 +2638,7 @@ function createUpstreamElement(kind, props, name) {
             label,
         });
         case 'mirror': return makeMirror({
-            flat: true,
-            R: Number(props.R) || 2.0,
-            refl: Number.isFinite(props.reflectivity) ? props.reflectivity : 1.0,
+            ...mirrorParams(props),
             label,
         });
         case 'polarizer': return makePolarizer({
@@ -2709,9 +2708,7 @@ function upstreamElementState(el) {
             type = 'mirror';
             props = {
                 ...common,
-                flat: true,
-                R: Number(p.R) || 2.0,
-                refl: Number.isFinite(p.reflectivity) ? p.reflectivity : 1.0,
+                ...mirrorParams(p),
             };
             break;
         case 'polarizer':

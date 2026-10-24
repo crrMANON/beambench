@@ -1,0 +1,113 @@
+{
+  "params": {
+    "beamWidthScale": 1,
+    "showGrid": true,
+    "showLabels": true,
+    "labelFontSize": 1
+  },
+  "sources": [
+    {
+      "props": {
+        "beamMode": "gaussian",
+        "wavelength_nm": 530,
+        "bandwidth_nm": 0,
+        "specSamples": 9,
+        "waist_w0_um": 1000,
+        "rayleigh_mm": 5927.533308659987,
+        "forward_cm": 60,
+        "backward_cm": 0,
+        "intensity_rel": 1,
+        "M2": 1,
+        "rays_aperture_radius_mm": 1,
+        "rays_spacing_um": 500,
+        "rays_radius_um": 30,
+        "polPreset": "Linear X",
+        "customPolEx": "1+0i",
+        "customPolEy": "0+0i"
+      },
+      "position": [
+        0,
+        0,
+        -0.3
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "type": "lens",
+      "props": {
+        "f": 0.025
+      },
+      "position": [
+        0,
+        0,
+        -0.2
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "type": "lens",
+      "props": {
+        "f": 0.1
+      },
+      "position": [
+        0,
+        0,
+        -0.075
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "type": "multimeter",
+      "props": {},
+      "position": [
+        0,
+        0,
+        0.1
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "ruler": null
+}

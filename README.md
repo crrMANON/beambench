@@ -2,11 +2,13 @@
 
 <div align="center">
 
-**Version:** 1.0.0 | **License:** GPL-3.0-or-later | **Node:** >=20.0.0
+**Version:** 1.2.0 | **License:** GPL-3.0-or-later | **Node:** >=20.0.0
 
 </div>
 
 ## Overview
+
+[v1.2.0 发行说明与下载指南](docs/releases/v1.2.0.md)：三套模块化光具库、可选全类精细模型及操纵杆连接修复；原版UI与场景保留。
 
 BeamBench provides an embedded 3D optical laboratory where humans and AI agents can perform experiments using the same interaction semantics: placing optical components, mechanical alignment, beam collimation, and BB84 quantum key distribution teaching.
 
@@ -250,5 +252,10 @@ For this development effort:
 ## 模块化光具库补充
 
 原版默认界面与场景保留。新增数据型偏振库，可按[安装说明](docs/OPTICS_LIBRARIES.md)独立接入或移除；`npm run build:basic`输出基础实验室到`dist-basic/`。本阶段只扩展原生器件预设。
+1.1.0另提供[几何光学](library-packages/geometric-optics/README.md)与[高斯光束](library-packages/gaussian-beams/README.md)独立库，分别有8/5项预设和三个实验示例。三个库同时安装时，基础版26条、默认版30条；界面样式、默认场景和光照保持原版。`npm run pack:optics`生成三个独立ZIP。
 根目录`RELEASE_MANIFEST.json`和`SHA256SUMS`属于恢复的历史发行快照；修改后的发行包请以重新执行`npm run release`生成的包内清单为准。
+
+## 精细光具模型（独立可选）
+
+新增全类型精细模型，保留原版UI、场景和入口。使用 `npm run build:basic:detailed` 后打开 `dist-basic-detailed/beambench-standalone.html`。完整器件清单、原版兼容范围及单面吸收探测器行为见[精细模型说明](docs/DETAILED_MODELS.md)。
 

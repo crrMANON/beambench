@@ -33,10 +33,10 @@ const staging = resolve(stagingRoot, name);
 
 const SOURCE_PATHS = [
   'src', 'tests', 'tools', 'scenarios', 'docs', 'examples', 'public',
-  'beambench.html', 'index.html', 'NOTICE', 'LICENSE', 'README.md', 'PLAN.md',
+  'beambench.html', 'index.html', 'NOTICE', 'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'README.md', 'PLAN.md', 'AGENTS.md',
   'package.json', 'package-lock.json', 'tsconfig.json', 'vite.config.ts',
   'vitest.config.ts', 'playwright.config.ts', 'eslint.config.js', '.npmrc',
-  '.gitignore', 'optics-libraries', 'library-packages', 'playwright.optics.config.ts',
+  '.gitignore', 'optics-libraries', 'library-packages', 'playwright.optics.config.ts', 'playwright.models.config.ts',
 ];
 
 function copy(relative) {
@@ -45,7 +45,7 @@ function copy(relative) {
     console.warn(`skip missing path: ${relative}`);
     return;
   }
-  cpSync(from, resolve(staging, relative), { recursive: true });
+  cpSync(from, resolve(staging, relative), { recursive: true, filter: path => basename(path) !== '.DS_Store' });
 }
 
 function sha256(path) {
@@ -62,22 +62,28 @@ function walk(relative, output = []) {
   return output;
 }
 
-console.log('Building standalone bundle…');
-execFileSync('npm', ['run', 'build:standalone'], { cwd: root, stdio: 'inherit' });
+const builds = [
+  ['build:standalone', 'dist'], ['build:basic', 'dist-basic'],
+  ['build:detailed', 'dist-detailed'], ['build:basic:detailed', 'dist-basic-detailed'],
+];
+for (const [command] of builds) {
+  console.log(`Building ${command}…`);
+  execFileSync('npm', ['run', command], { cwd: root, stdio: 'inherit' });
+}
 
 rmSync(stagingRoot, { recursive: true, force: true });
 mkdirSync(staging, { recursive: true });
 
 for (const relative of SOURCE_PATHS) copy(relative);
 
-// Ship the built HTML and JS, but not the large source map.
-mkdirSync(resolve(staging, 'dist/assets'), { recursive: true });
-copy('dist/beambench.html');
-copy('dist/beambench-standalone.html');
-copy('dist/optics-build.json');
-for (const file of readdirSync(resolve(root, 'dist/assets'))) {
-  if (file.endsWith('.map')) continue;
-  cpSync(resolve(root, 'dist/assets', file), resolve(staging, 'dist/assets', file));
+// Ship all four profiles, omitting source maps.
+for (const [, directory] of builds) {
+  mkdirSync(resolve(staging, directory, 'assets'), { recursive: true });
+  for (const file of ['beambench.html', 'beambench-standalone.html', 'optics-build.json']) copy(`${directory}/${file}`);
+  for (const file of readdirSync(resolve(root, directory, 'assets'))) {
+    if (file.endsWith('.map')) continue;
+    cpSync(resolve(root, directory, 'assets', file), resolve(staging, directory, 'assets', file));
+  }
 }
 
 const files = walk('.').sort();
@@ -94,6 +100,9 @@ const manifest = {
     development: 'npm run dev',
     preview: 'npm run build && npm run preview',
     standalone: 'dist/beambench-standalone.html',
+    basic: 'dist-basic/beambench-standalone.html',
+    detailed: 'dist-detailed/beambench-standalone.html',
+    basicDetailed: 'dist-basic-detailed/beambench-standalone.html',
   },
   files,
   checksums: Object.fromEntries(
@@ -112,6 +121,9 @@ writeFileSync(
 mkdirSync(releaseDir, { recursive: true });
 const tarball = resolve(releaseDir, `${name}.tar.gz`);
 const zipball = resolve(releaseDir, `${name}.zip`);
+// zip updates an existing archive in place and retains removed members.
+rmSync(zipball, { force: true });
+rmSync(tarball, { force: true });
 execFileSync('tar', ['-czf', tarball, '-C', stagingRoot, name], { stdio: 'inherit' });
 execFileSync('zip', ['-qr', zipball, name], { cwd: stagingRoot, stdio: 'inherit' });
 

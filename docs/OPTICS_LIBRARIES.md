@@ -1,6 +1,6 @@
 # 数据型模块化光具库 API 1
 
-本功能只增加原生器件预设，不改原版场景、光照、材质、模型和UI样式。
+本功能只增加原生器件预设，不改原版场景、光照、材质、模型和UI样式。基础实验室1.1.0新增几何光学和高斯光束库，数据接口仍为API 1。
 默认未安装库时仍显示原版10个按钮；安装后追加同样式按钮。
 
 ## 使用
@@ -15,7 +15,15 @@
 移走库目录后重新构建即完成解耦。库不负责提供新的原生工厂代码，基础版仍含原版全部工厂，故卸载后仍可恢复历史实验。
 
 源码示例在 `library-packages/polarization/`，可直接复制到安装目录体验。
-`npm run pack:optics`生成 `release/polarization-1.0.0.zip`，可作为独立GitHub源码仓库或Release内容发布。本次不自动发布。
+`npm run pack:optics`分别打包全部主题库；`npm run pack:optics -- --library geometric-optics`只打包指定库。偏振ZIP仍为`release/polarization-1.0.0.zip`。
+
+| 主题 | 独立ZIP | 条目 |
+| --- | --- | --- |
+| 偏振 | polarization-1.0.0.zip | 7 |
+| 几何光学 | geometric-optics-1.0.0.zip | 8 |
+| 高斯光束 | gaussian-beams-1.0.0.zip | 5 |
+
+新库分别位于`library-packages/geometric-optics/`和`library-packages/gaussian-beams/`，各自附三个实验和完整许可证。使用新工厂需要1.1.0基础实验室；旧偏振库不变。三个库一起安装后，基础版26条、默认版30条。未接入UI主题切换或光阑；卸载是在构建前移走对应目录。
 
 ## 清单接口
 
@@ -37,8 +45,11 @@
 | faraday | phiDeg，−360至360度 |
 | beamSplitter | R（0至1）、polarizing（布尔）、polTransmit（Vertical/Horizontal） |
 | multimeter | 空对象 |
+| lens | f，单位m，−10至10且绝对值至少1e−6 |
+| thickLens | R1/R2（同上曲率范围，m）、n（1至3）、thickness（1e−5至0.05m） |
+| mirror | flat（布尔）、R（同上曲率范围，m）、refl（0至1）、n、thickness |
 
-清单仅提供数据，不执行JavaScript，不从远端下载依赖，不扫描库中的其他代码。光具库的卸载是构建级操作，不提供运行时热卸载。
+清单仅提供数据，不执行JavaScript，不从远端下载依赖，不扫描库中的其他代码。光具库的卸载是构建级操作，不提供运行时热卸载。半径/焦距必须是有限非零值，暂不提供平面透镜面或任意自定义镜面滤光参数。
 
 ## 兼容性与视觉边界
 
@@ -52,4 +63,5 @@
 
 `npm run verify:optics`在隔离测试工程中从ZIP安装，构建默认/基础的无库、有库和卸载状态，检查非法接口拒绝及单文件语法；不修改实际安装目录。
 随后运行`npm run test:optics:browser`进行文件模式下的原版截图比较和真实拖拽/保存/加载/撤销测试。浏览器测试需要本机允许Playwright启动Chromium；不会启动HTTP服务。
+若headless shell的软件渲染在多器件场景超时，可使用已安装的Chrome运行：`BB_BROWSER_CHANNEL=chrome npm run test:optics:browser`。这只改变测试浏览器，不读取用户Chrome资料，也不改变应用渲染设置。
 原版截图基准来自固定的10月18日单文件压缩样本，不随当前构建更新。新增浏览器套件单独执行，不混入原E2E命令。

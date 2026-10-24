@@ -1,0 +1,90 @@
+{
+  "apiVersion": 1,
+  "id": "geometric-optics",
+  "name": "几何光学",
+  "version": "1.0.0",
+  "presets": [
+    {
+      "id": "positive-50",
+      "name": "几何·凸透镜50",
+      "factory": "lens",
+      "params": {
+        "f": 0.05
+      }
+    },
+    {
+      "id": "positive-100",
+      "name": "几何·凸透镜100",
+      "factory": "lens",
+      "params": {
+        "f": 0.1
+      }
+    },
+    {
+      "id": "negative-50",
+      "name": "几何·凹透镜50",
+      "factory": "lens",
+      "params": {
+        "f": -0.05
+      }
+    },
+    {
+      "id": "biconvex",
+      "name": "几何·双凸厚透镜",
+      "factory": "thickLens",
+      "params": {
+        "R1": 0.05,
+        "R2": -0.05,
+        "n": 1.5,
+        "thickness": 0.004
+      }
+    },
+    {
+      "id": "biconcave",
+      "name": "几何·双凹厚透镜",
+      "factory": "thickLens",
+      "params": {
+        "R1": -0.05,
+        "R2": 0.05,
+        "n": 1.5,
+        "thickness": 0.004
+      }
+    },
+    {
+      "id": "flat-mirror",
+      "name": "几何·平面镜",
+      "factory": "mirror",
+      "params": {
+        "flat": true,
+        "R": 0.2,
+        "refl": 1,
+        "n": 1.5,
+        "thickness": 0.00018
+      }
+    },
+    {
+      "id": "concave-mirror",
+      "name": "几何·凹面镜",
+      "factory": "mirror",
+      "params": {
+        "flat": false,
+        "R": 0.2,
+        "refl": 1,
+        "n": 1.5,
+        "thickness": 0.00018
+      }
+    },
+    {
+      "id": "convex-mirror",
+      "name": "几何·凸面镜",
+      "factory": "mirror",
+      "params": {
+        "flat": false,
+        "R": -0.2,
+        "refl": 1,
+        "n": 1.5,
+        "thickness": 0.00018
+      }
+    }
+  ]
+}
